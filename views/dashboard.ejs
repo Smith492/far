@@ -1,0 +1,417 @@
+<div class="main_section">
+	<div class="container-fluid mt-4 mr-4">
+
+		<div class="chat_container">
+			<div id="date" class="fixed-top" style="margin-top: 0px; margin-left: 15px; width:97%;">
+			</div>
+
+			<div id="noticeBoard" class="fixed-top" style="margin-top: 25px; margin-left: 15px; width:97%;">
+			</div>
+
+			<!--message_section-->
+			<div class="col-sm-9 message_section" style="margin-top: 25px;">
+
+				<!--new_message_head-->
+				<div class="row" style="position: fixed; width: 79vw; margin-left: 0px;">
+					<div class="new_message_head" style="height: 10px;">
+						<div class="col-lg ml-2" style="margin-top: -11px;"> <h6><a href="/admin">এডমিন<i class="fas fa-user"></i></a></h6></div>
+						<div id="pwd" class="col-lg">
+							<h6><a style="color: rgb(248, 107, 55); float: right; margin-right: 10px; margin-top: -25px;" href="/password">পাসওয়ার্ড পাল্টান<i class="fas fa-key"></i></a></h6>
+						</div>		
+					</div>
+				</div>
+				<!--new_message_head-->
+
+				<!--chat_area-->
+				<div id="chat1" class="chat_area " style="margin-top: 55px; overflow: auto; height: 63vh;">
+					<a href="javascript:" id="jump-to-last"><i class="icon-chevron-up">&#9660;</i></a>
+
+					<div id="loadmore" style="text-align: center;">
+						<a href="javascript:">আরো দেখব</a>
+					</div>
+
+					<ul id="chat" class="list-unstyled">
+					</ul>
+				</div>
+				<!--chat_area-->
+
+				<!--<div style="height: 157vh;"> </div>-->
+
+				<!--message_write-->
+				<div id="messageForm" class="message_write fixed-bottom" style="margin-left: 15px; width: 77vw;">
+					<div>
+						<% include ./partials/messages %>
+					</div>
+					<div id="messageBox">
+						<textarea style="height: 45px;" id="message" class="form-control" placeholder="এখানে লিখুন..." autofocus></textarea>
+					</div>
+					<div class="clearfix "></div>
+					<!--	<div class="chat_bottom "><a href="# " class="pull-left upload_btn "><i class="fa fa-cloud-upload " aria-hidden="true "></i>
+												Add Files</a>
+												<a href="# " class="pull-right btn btn-success ">
+												Send</a>
+										 </div>-->						
+				</div>
+				<!--message_write-->
+
+			</div>
+
+			<!--message_section-->
+
+			<!--chat_sidebar-->
+			<div class="col-sm-3 chat_sidebar float-right " style="margin-left: 79%; margin-top: 25px; position: fixed;">
+				<div class="row ">
+					<div class="new_message_head" id="time" style="height: 10px;"> <button id="button" type="button" class="btn btn-danger"
+							style="float: left; margin-left: 18%; margin-right: 18%; margin-top: -19px;">লগ আউট</button>
+					</div>
+
+					<div class="member_list" style="width: 100%; overflow: auto;">
+						<ul id="users" class="list-unstyled">
+
+						</ul>
+					</div>
+					<div class="new_message_head"> </div>
+				</div>
+
+			</div>
+			<!--chat_sidebar-->
+			<h2 style="display:none;" id="usr"><%=name %></h2>
+
+		</div>
+	</div>
+</div>
+
+<link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.7.2/css/all.css"
+	integrity="sha384-fnmOCqbTlWIlj8LyTjo7mOUStjsKC4pOpQbqyi7RrhN7udi9RwhKkMHpvLbHG9Sr" crossorigin="anonymous" />
+
+
+<script>
+
+	$(function () {
+		var socket = io.connect();
+		var $messageForm = $('#messageForm');
+		var $message = $('#message');
+		var $chat = $('#chat');
+		var $chat1 = $('#chat1');
+		var $users = $('#users');
+		var $user = $('#usr').html();
+		var $lmore = $('#loadmore');
+		var $messageBox = $('#messageBox');
+		var $notice = $('#noticeBoard');
+		var $date = $('#date');
+		var counter = 0;
+		var history = [];
+		var index = -1;
+
+		setInterval(function() {
+			window.location.reload();
+		}, 900000);
+
+		// Active Response
+		socket.on('response', () => {
+			let t = moment().tz('Asia/Dhaka').format('a h:mm');
+
+			socket.emit('actRes', { user: $user, time: t });
+
+			/*$("ul#users > li").each(function (index) {
+
+				if ($(this).text().split(" ", 1) == $user) {
+
+					let t = $(this).text().split(" ");
+					t = t[1] + " " + t[2];
+					socket.emit('actRes', { user: $user, time: t });
+				}
+			});*/
+
+		});
+
+		// Load Enabled/Disabled Message Area
+		socket.on('l-chat', function (data, notice, currDate) {
+
+			if (!data) {
+				$messageBox.children().remove();
+				$messageBox.append('<textarea disabled id="message" class="form-control" placeholder="চ্যাট বন্ধ আছে" autofocus></textarea>');
+			}
+
+			$notice.children().remove();
+			$notice.append('<marquee id="notice" behavior="scroll" direction="left" style="height: 25px; background-color: lightblue;">নোটিশঃ ' + notice + '</marquee>');
+
+			$date.children().remove();
+			$date.append('<p style="height: 25px; background-color: lightgreen; text-align: center" id="date">তারিখঃ ' + currDate + '</p>');
+
+		});
+
+		// Delete Messages
+		socket.on('chat deleted', function () {
+			$("ul#chat > li").each(function (index) {
+				$(this).remove();
+			});
+		});
+
+		// Chat Option Toggled
+		socket.on('toggled', function (data) {
+
+			//$messageBox.children().remove();
+			if (data) {
+				$message.attr("placeholder", "এখানে লিখুন...").val("").focus().blur();
+				$message.prop('disabled', false);
+				//$messageBox.append('<textarea id="message" class="form-control" placeholder="এখানে লিখুন..." autofocus></textarea>');
+			} else {
+				$message.attr("placeholder", "চ্যাট বন্ধ আছে").val("").focus().blur();
+				$message.prop('disabled', true);
+				//$messageBox.append('<textarea disabled id="message" class="form-control" placeholder="চ্যাট বন্ধ আছে" autofocus></textarea>');
+			}
+
+		});
+
+		// Notice Updated
+		socket.on('notice updated', function (data) {
+
+			$notice.children().remove();
+			$notice.append('<marquee id="notice" behavior="scroll" direction="left" style="height: 25px; background-color: lightblue;">নোটিসঃ ' + data + '</marquee>');
+
+		});
+
+		// Date Updated
+		socket.on('date updated', function (data) {
+
+			$date.children().remove();
+			$date.append('<p style="height: 25px; background-color: lightgreen; text-align: center" id="date">তারিখঃ ' + data + '</p>');
+
+		});
+
+		// Active users mark by adding class act
+		socket.on('actM', (data) => {
+			$("ul#users > li").each(function (index) {
+				console.log("actmark called");
+				if ($(this).text().split(" ", 1) == data) {
+					$(this).addClass("act");
+				}
+
+			});
+		});
+
+		// InActive users remove and Active users unmark
+		socket.on("inAct", () => {
+			$("ul#users > li").each(function (index) {
+
+				if (!$(this).hasClass("act")) {
+					$(this).fadeOut("normal", function () {
+						$(this).remove();
+					});
+				} else { $(this).removeClass("act") };
+
+			});
+		});
+
+
+		// Logout
+		$("#button").click(function () {
+
+			socket.emit('lg', $user);
+			window.location.href = '/users/logout';
+
+		});
+
+		// Remove logout user
+		socket.on('lgUser', function (data) {
+			$("ul#users > li").each(function (index) {
+
+				if ($(this).text().split(" ", 1) == data) {
+					$(this).fadeOut("normal", function () {
+						$(this).remove();
+					});
+				}
+			});
+		});
+
+
+		// Append new user
+		socket.on('nUser', function (data) {
+			var nouser = true;
+			$("ul#users > li").each(function (index) {
+
+				if ($(this).text().split(" ", 1) == data.user) {
+					nouser = false;
+				}
+			});
+
+			if (nouser) {
+				$users.append('<li class="left clearfix"><div class="header_sec"><strong class="primary-font"><mark>' + data.user + '</mark></strong> <i class="pull-right">' + data.time + '</i></div></li>').fadeIn(2000);
+			}
+
+		});
+
+		// Users list append
+		socket.on('get users', function (data) {
+			$users.html('');
+			for (i = 0; i < data.length; i++) {
+				$users.append('<li class="left clearfix"><div class="header_sec"><strong class="primary-font"><mark>' + data[i].username + '</mark></strong> <i class="pull-right">' + data[i].time + '</i></div></li>');
+			}
+		});
+
+
+		// Message submission
+		$messageForm.keypress(function (e) {
+			if (e.which == 13 && !e.shiftKey) {
+				msg = $message.val();
+				if ($.trim(msg).length > 0) {
+					let t = moment().tz('Asia/Dhaka').format('a h:mm');
+					socket.emit('send message', { user: $user, msg: $.trim(msg), time: t });
+					$message.val('');
+					$chat.append('<li class="pending">ম্যাসেজ পাঠানো হচ্ছে...</li>');
+					$chat1.scrollTop($chat.get(0).scrollHeight);
+					history.unshift(msg);
+					index = -1;
+				}
+			}
+		});
+
+		// Message submission
+		$messageForm.keydown(function (e) {
+			if(e.which == 90 && e.ctrlKey && e.shiftKey) {
+				if(index >= 0) {
+					index--;
+					if(index >= 0) {
+						$message.val(history[index]);
+						$message.focus();
+					}
+					else {
+						$message.val("");
+						$message.focus();
+					}
+				}
+			}
+			else if(e.which == 90 && e.ctrlKey) {
+				if(index < history.length) {
+					if(!(index == -1 && $message.val() != "")) {
+						index++;
+						if(index < history.length) {
+							$message.val(history[index]);
+							$message.focus();
+						}
+						else {
+							$message.val("");
+							$message.focus();
+						}
+					}
+				}
+			}
+			else {
+				index = -1;
+			}
+		});
+
+		document.addEventListener('visibilitychange', function() {
+			if(!document.hidden) {
+				document.title = "al-kamr";
+			}
+		});
+
+		var unread = 0;
+		// New message append
+		socket.on('new message', function (data) {
+
+			$('ul#chat > li.pending').remove();
+
+			data.msg = data.msg.replace(/(?:\r\n|\r|\n)/g, '<br>');
+
+			$chat.append('<li  style="padding: 0px; margin: 1px;" class="left clearfix "> <div class="chat-body1 clearfix "> <p><strong class="text-info">' + data.user + ': </strong>' + data.msg + '<i class="text-muted">' + data.time + ' <a id="a' + counter + '" title="' + data.user + ": " + data.msg + "     " + data.time + '" href="javascript:"><i class="fas fa-reply"></i></a></i></p> </div> </li>');
+			counter++;
+
+			const element = document.querySelector('#jump-to-last')
+			const value = element.style.display
+
+			if (value == '' || value == "undefined" || value == "none") {
+				$chat1.scrollTop($chat.get(0).scrollHeight);
+
+			}
+			if (document.hidden) {
+				unread++;
+				document.title = "al-kamr(" + unread + ")";
+			} else {
+				unread = 0;
+			}
+
+		});
+
+
+		// Old message prepend on startup
+		socket.on('output', function (data) {
+
+			//socket.emit('load chat');
+
+			let t = moment().tz('Asia/Dhaka').format('a h:mm');
+			socket.emit('username', { user: $user, time: t });
+
+			if (data.length) {
+				for (var x = 0; x < data.length; x++) {
+					data[x].message = data[x].message.replace(/(?:\r\n|\r|\n)/g, '<br>');
+
+					$chat.prepend('<li  style="padding: 0px; margin: 1px;" class="left clearfix "> <div class="chat-body1 clearfix "> <p><strong class="text-info">' + data[x].name + ': </strong>' + data[x].message + '<i class="text-muted">' + data[x].time + ' <a id="a' + counter + '" title="' + data[x].name + ": " + data[x].message + "     " + data[x].time + '" href="javascript:"><i class="fas fa-reply"></i></a></i></p> </div> </li>');
+					counter++;
+				}
+			}
+
+			$chat1.scrollTop($chat.get(0).scrollHeight);
+		});
+
+
+		// Load more message prepend
+		socket.on('lm-meesages', function (data) {
+			if (data.length) {
+				for (var x = 0; x < data.length; x++) {
+					$chat.prepend('<li  style="padding: 0px; margin: 1px;" class="left clearfix "> <div class="chat-body1 clearfix "> <p><strong class="text-info">' + data[x].name + ': </strong>' + data[x].message + '<i class="text-muted">' + data[x].time + ' <a id="a' + counter + '" title="' + data[x].name + ": " + data[x].message + "     " + data[x].time + '" href="javascript:"><i class="fas fa-reply"></i></a></i></p> </div> </li>');
+					counter++;
+				}
+			} else { $lmore.hide(); }
+		});
+
+
+
+
+		// Jump to Last msg funtionality 
+		var jump_to_button = $('#jump-to-last');
+		$chat1.scroll(function () {
+
+			if ($chat1.scrollTop() == 0) {
+				$lmore.fadeIn(200);
+			} else { $lmore.fadeOut(200); }
+
+			var msgwind_height = $(this).height();
+			var msg_position = ($(this).get(0).scrollHeight - $(this).scrollTop()); /* Arbitrary calculation */
+			var scroll_distance = (msg_position - msgwind_height);
+			var lastmsg_height = $(this).find('li:last-child').height();
+			if (scroll_distance >= lastmsg_height) {
+				jump_to_button.fadeIn(200);    // Fade in the arrow
+			} else {
+				jump_to_button.fadeOut(200);   // Else fade out the arrow
+			}
+		});
+		jump_to_button.click(function () {      // When arrow is clicked
+			$chat1.animate({
+				scrollTop: $chat.get(0).scrollHeight       // Scroll to last msg
+			}, 500);
+		});
+
+
+		// load more onclick
+		$lmore.click(function () {
+
+			// load more message emit
+			var msgnow = $chat.children().length;
+			socket.emit('loadmore', msgnow);
+
+		});
+
+		$chat.on('click', "a[id^='a']", function() {
+			var $text_to_reply = $(this).attr('title').replace(/<br>/g, '\n');
+			if($text_to_reply.length > 200) {
+				$text_to_reply = $text_to_reply.slice(0, 100) + "     ...............     " + $text_to_reply.slice($text_to_reply.length - 100, $text_to_reply.length);
+			}
+			$text_to_reply = $text_to_reply + "   ===>   ";
+			$message.val($text_to_reply);
+			$message.focus();
+		});
+	});
+</script>
